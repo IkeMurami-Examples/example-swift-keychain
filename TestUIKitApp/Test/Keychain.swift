@@ -45,57 +45,29 @@ class SwiftKeychainTest {
      Кладем асимметричные ключи шифрования и получаем их в виде строк
      */
     func genAndPutAsymKeys(privateTagData: String, publicTagData: String) -> Int {
-        var publicKey: SecKey?
-        var privateKey: SecKey?
-        
         let access =
             SecAccessControlCreateWithFlags(kCFAllocatorDefault,
                                             kSecAttrAccessibleWhenUnlockedThisDeviceOnly,
                                             .privateKeyUsage,
                                             nil)!
-        
-        let privateKeyDictionary = [
-            kSecAttrIsPermanent: YESSTR,
-            kSecAttrApplicationTag: privateTagData.data(using: .utf8)!,
-            kSecReturnData: YESSTR,
-            kSecClass: kSecClassKey,
-            kSecAttrAccessible: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly,
-            kSecAttrTokenID as String:            kSecAttrTokenIDSecureEnclave, // Generate key into Secure Enclave
-            kSecAttrAccessControl: access  // For storeing into Secure Enclave
-        ] as CFDictionary
-        
-        let publicKeyDictionary = [
-            kSecAttrIsPermanent: YESSTR,
-            kSecAttrApplicationTag: publicTagData.data(using: .utf8)!,
-            kSecReturnData: YESSTR,
-            kSecClass: kSecClassKey,
-            kSecAttrAccessible: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        ] as CFDictionary
-        
-        let keyPairDictionary = [
-            kSecAttrKeyType: kSecAttrKeyTypeRSA,
-            kSecAttrKeySizeInBits: 2048,
-            kSecPrivateKeyAttrs: privateKeyDictionary,
-            kSecPublicKeyAttrs: publicKeyDictionary
-        ] as CFDictionary
-        
+        let attributes: [String: Any] = [
+          kSecAttrKeyType as String:            kSecAttrKeyTypeEC,
+          kSecAttrKeySizeInBits as String:      256,//256,
+          kSecAttrTokenID as String:            kSecAttrTokenIDSecureEnclave,
+          kSecPrivateKeyAttrs as String: [
+            kSecAttrIsPermanent as String:      true,
+            kSecAttrApplicationTag as String:   privateTagData,
+            kSecAttrAccessControl as String:    access
+          ]
+        ]
         var error: Unmanaged<CFError>?
-        guard let privateKey1 = SecKeyCreateRandomKey(keyPairDictionary, &error) else {
+        guard let privateKey = SecKeyCreateRandomKey(attributes as CFDictionary, &error) else {
             return -1
         }
-        let out11 = SecKeyCopyExternalRepresentation(privateKey1, nil)
-        print("Test private key SE  — \(out11)")
-        
-        let status = SecKeyGeneratePair(keyPairDictionary, &publicKey, &privateKey)
-        
-        print("I'm gen keys and put to keychain")
-        let out = SecKeyCopyExternalRepresentation(privateKey!, nil)
-        print("Test private key — \(out)")
-        let out2 = SecKeyCopyExternalRepresentation(publicKey!, nil)
-        print("Test public key — \(out2)")
-        
-        print("WTF Status: \(getPrivateKeyFromKeychain())")
-        return statusParse(status: status)
+        print("Test private key SE  — \(privateKey)")
+        let out = SecKeyCopyExternalRepresentation(privateKey, nil)
+        print("Test private key SE repr  — \(out)")
+        return 0
     }
     
     func getPrivateKeyFromKeychain() -> Int {
